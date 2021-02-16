@@ -36,13 +36,13 @@ def define_components(mod):
     they can be dispatched. A dispatch decisions is made for each member
     of this set. Members of this set can be abbreviated as (g, t) or
     (g, t).
-    
-    TPS_FOR_GEN[g] is a set array showing all timepoints when a 
-    project is active. These are the timepoints corresponding to 
-    PERIODS_FOR_GEN. This is the same data as GEN_TPS, 
+
+    TPS_FOR_GEN[g] is a set array showing all timepoints when a
+    project is active. These are the timepoints corresponding to
+    PERIODS_FOR_GEN. This is the same data as GEN_TPS,
     but split into separate sets for each project.
 
-    TPS_FOR_GEN_IN_PERIOD[g, period] is the same as 
+    TPS_FOR_GEN_IN_PERIOD[g, period] is the same as
     TPS_FOR_GEN, but broken down by period. Periods when
     the project is inactive will yield an empty set.
 
@@ -103,12 +103,12 @@ def define_components(mod):
     Value).
 
     _FUEL_BASED_GEN_TPS is a subset of GEN_TPS
-    showing all times when fuel-consuming projects could be dispatched 
+    showing all times when fuel-consuming projects could be dispatched
     (used to identify timepoints when fuel use must match power production).
 
     GEN_TP_FUELS is a subset of GEN_TPS * FUELS,
     showing all the valid combinations of project, timepoint and fuel,
-    i.e., all the times when each project could consume a fuel that is 
+    i.e., all the times when each project could consume a fuel that is
     limited, costly or produces emissions.
 
     GenFuelUseRate[(g, t, f) in GEN_TP_FUELS] is a
@@ -129,7 +129,7 @@ def define_components(mod):
     fuel's upstream emissions, as well as Carbon Capture efficiency for
     generators that implement Carbon Capture and Sequestration. This does
     not yet support multi-fuel generators.
-    
+
     AnnualEmissions[p in PERIODS]:The system's annual emissions, in metric
     tonnes of CO2 per year.
 
@@ -170,7 +170,7 @@ def define_components(mod):
         result = m._TPS_FOR_GEN_dict.pop(gen)
         if len(m._TPS_FOR_GEN_dict) == 0:
             delattr(m, '_TPS_FOR_GEN_dict')
-        return result        
+        return result
     mod.TPS_FOR_GEN = Set(
         mod.GENERATION_PROJECTS, within=mod.TIMEPOINTS,
         rule=TPS_FOR_GEN_rule)
@@ -187,33 +187,33 @@ def define_components(mod):
         if len(m._TPS_FOR_GEN_IN_PERIOD_dict) == 0:
             delattr(m, '_TPS_FOR_GEN_IN_PERIOD_dict')
         return result
-    mod.TPS_FOR_GEN_IN_PERIOD = Set(mod.GENERATION_PROJECTS, mod.PERIODS, 
+    mod.TPS_FOR_GEN_IN_PERIOD = Set(mod.GENERATION_PROJECTS, mod.PERIODS,
         within=mod.TIMEPOINTS,
         rule=TPS_FOR_GEN_IN_PERIOD_rule)
 
     mod.GEN_TPS = Set(
         dimen=2,
         initialize=lambda m: (
-            (g, tp) 
-                for g in m.GENERATION_PROJECTS 
+            (g, tp)
+                for g in m.GENERATION_PROJECTS
                     for tp in m.TPS_FOR_GEN[g]))
     mod.VARIABLE_GEN_TPS = Set(
         dimen=2,
         initialize=lambda m: (
-            (g, tp) 
+            (g, tp)
                 for g in m.VARIABLE_GENS
                     for tp in m.TPS_FOR_GEN[g]))
     mod._FUEL_BASED_GEN_TPS = Set(
         dimen=2,
         initialize=lambda m: (
-            (g, tp) 
+            (g, tp)
                 for g in m.FUEL_BASED_GENS
                     for tp in m.TPS_FOR_GEN[g]))
     mod.GEN_TP_FUELS = Set(
         dimen=3,
         initialize=lambda m: (
-            (g, t, f) 
-                for (g, t) in m._FUEL_BASED_GEN_TPS 
+            (g, t, f)
+                for (g, t) in m._FUEL_BASED_GEN_TPS
                     for f in m.FUELS_FOR_GEN[g]))
 
     mod.GenCapacityInTP = Expression(
@@ -327,20 +327,20 @@ def load_inputs(mod, switch_data, inputs_dir):
 def post_solve(instance, outdir):
     """
     Exported files:
-    
+
     dispatch-wide.txt - Dispatch results timepoints in "wide" format with
     timepoints as rows, generation projects as columns, and dispatch level
     as values
-    
-    dispatch.csv - Dispatch results in normalized form where each row 
+
+    dispatch.csv - Dispatch results in normalized form where each row
     describes the dispatch of a generation project in one timepoint.
-    
+
     dispatch_annual_summary.csv - Similar to dispatch.csv, but summarized
     by generation technology and period.
-    
+
     dispatch_zonal_annual_summary.csv - Similar to dispatch_annual_summary.csv
-    but broken out by load zone. 
-    
+    but broken out by load zone.
+
     dispatch_annual_summary.pdf - A figure of annual summary data. Only written
     if the ggplot python library is installed.
     """
@@ -362,14 +362,14 @@ def post_solve(instance, outdir):
         "gen_tech": instance.gen_tech[g],
         "gen_load_zone": instance.gen_load_zone[g],
         "gen_energy_source": instance.gen_energy_source[g],
-        "timestamp": instance.tp_timestamp[t], 
+        "timestamp": instance.tp_timestamp[t],
         "tp_weight_in_year_hrs": instance.tp_weight_in_year[t],
         "period": instance.tp_period[t],
         "DispatchGen_MW": value(instance.DispatchGen[g, t]),
         "Energy_GWh_typical_yr": value(
             instance.DispatchGen[g, t] * instance.tp_weight_in_year[t] / 1000),
-        "VariableCost_per_yr": value(
-            instance.DispatchGen[g, t] * instance.gen_variable_om[g] * 
+        "VariableOMCost_per_yr": value(
+            instance.DispatchGen[g, t] * instance.gen_variable_om[g] *
             instance.tp_weight_in_year[t]),
         "DispatchEmissions_tCO2_per_typical_yr": value(sum(
             instance.DispatchEmissions[g, t, f] * instance.tp_weight_in_year[t]
@@ -379,12 +379,12 @@ def post_solve(instance, outdir):
     dispatch_full_df = pd.DataFrame(dispatch_normalized_dat)
     dispatch_full_df.set_index(["generation_project", "timestamp"], inplace=True)
     dispatch_full_df.to_csv(os.path.join(outdir, "dispatch.csv"))
-        
+
 
     annual_summary = dispatch_full_df.groupby(['gen_tech', "gen_energy_source", "period"]).sum()
     annual_summary.to_csv(
         os.path.join(outdir, "dispatch_annual_summary.csv"),
-        columns=["Energy_GWh_typical_yr", "VariableCost_per_yr", 
+        columns=["Energy_GWh_typical_yr", "VariableOMCost_per_yr",
                  "DispatchEmissions_tCO2_per_typical_yr"])
 
 
@@ -393,13 +393,13 @@ def post_solve(instance, outdir):
     ).sum()
     zonal_annual_summary.to_csv(
         os.path.join(outdir, "dispatch_zonal_annual_summary.csv"),
-        columns=["Energy_GWh_typical_yr", "VariableCost_per_yr", 
+        columns=["Energy_GWh_typical_yr", "VariableOMCost_per_yr",
                  "DispatchEmissions_tCO2_per_typical_yr"]
     )
-    
+
     if can_plot:
         annual_summary_plot = ggplot(
-                annual_summary.reset_index(), 
+                annual_summary.reset_index(),
                 aes(x='period', weight="Energy_GWh_typical_yr", fill="factor(gen_tech)")
             ) + \
             geom_bar(position="stack") + \
