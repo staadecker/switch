@@ -17,7 +17,7 @@ dependencies = 'switch_model.timescales', 'switch_model.balancing.load_zones',\
 
 def define_components(mod):
     """
-    
+
     STORAGE_GENS is the subset of projects that can provide energy storage.
 
     STORAGE_GEN_BLD_YRS is the subset of GEN_BLD_YRS, restricted
@@ -47,39 +47,39 @@ def define_components(mod):
     given investment period. This is only defined for storage technologies.
     Note that this describes the energy component and the overnight_cost
     describes the power component.
-    
+
     BuildStorageEnergy[(g, bld_yr) in STORAGE_GEN_BLD_YRS]
     is a decision of how much energy capacity to build onto a storage
     project. This is analogous to BuildGen, but for energy rather than power.
-    
+
     StorageEnergyInstallCosts[PERIODS] is an expression of the
     annual costs incurred by the BuildStorageEnergy decision.
-    
+
     StorageEnergyCapacity[g, period] is an expression describing the
     cumulative available energy capacity of BuildStorageEnergy. This is
     analogous to GenCapacity.
-    
+
     STORAGE_GEN_TPS is the subset of GEN_TPS,
     restricted to storage projects.
 
     ChargeStorage[(g, t) in STORAGE_GEN_TPS] is a dispatch
     decision of how much to charge a storage project in each timepoint.
-    
+
     StorageNetCharge[LOAD_ZONE, TIMEPOINT] is an expression describing the
     aggregate impact of ChargeStorage in each load zone and timepoint.
-    
+
     Charge_Storage_Upper_Limit[(g, t) in STORAGE_GEN_TPS]
     constrains ChargeStorage to available power capacity (accounting for
     gen_store_to_release_ratio)
-    
+
     StateOfCharge[(g, t) in STORAGE_GEN_TPS] is a variable
     for tracking state of charge. This value stores the state of charge at
     the end of each timepoint for each storage project.
-    
+
     Track_State_Of_Charge[(g, t) in STORAGE_GEN_TPS] constrains
     StateOfCharge based on the StateOfCharge in the previous timepoint,
     ChargeStorage and DispatchGen.
-    
+
     State_Of_Charge_Upper_Limit[(g, t) in STORAGE_GEN_TPS]
     constrains StateOfCharge based on installed energy capacity.
 
@@ -125,14 +125,14 @@ def define_components(mod):
     mod.STORAGE_GEN_TPS = Set(
         dimen=2,
         initialize=lambda m: (
-            (g, tp) 
+            (g, tp)
                 for g in m.STORAGE_GENS
                     for tp in m.TPS_FOR_GEN[g]))
 
     mod.ChargeStorage = Var(
         mod.STORAGE_GEN_TPS,
         within=NonNegativeReals)
-    
+
     # Summarize storage charging for the energy balance equations
     def StorageNetCharge_rule(m, z, t):
         # Construct and cache a set for summation as needed
@@ -157,7 +157,7 @@ def define_components(mod):
     mod.Charge_Storage_Upper_Limit = Constraint(
         mod.STORAGE_GEN_TPS,
         rule=Charge_Storage_Upper_Limit_rule)
-                
+
     mod.StateOfCharge = Var(
         mod.STORAGE_GEN_TPS,
         within=NonNegativeReals)
@@ -177,7 +177,7 @@ def define_components(mod):
     mod.State_Of_Charge_Upper_Limit = Constraint(
         mod.STORAGE_GEN_TPS,
         rule=State_Of_Charge_Upper_Limit_rule)
-        
+
 
 def load_inputs(mod, switch_data, inputs_dir):
     """
@@ -193,7 +193,7 @@ def load_inputs(mod, switch_data, inputs_dir):
         gen_storage_energy_overnight_cost
 
     """
- 
+
     switch_data.load_aug(
         filename=os.path.join(inputs_dir, 'generation_projects_info.tab'),
         auto_select=True,
@@ -210,25 +210,33 @@ def load_inputs(mod, switch_data, inputs_dir):
 
 def post_solve(instance, outdir):
     """
-    Export storage build information to storage_builds.txt, and storage
+    Export storage build information to storage_builds.txt,
+    storage capacity to storage_capacity.csv, and storage
     dispatch info to storage_dispatch.txt
     """
     import switch_model.reporting as reporting
     reporting.write_table(
         instance, instance.STORAGE_GEN_BLD_YRS,
         output_file=os.path.join(outdir, "storage_builds.txt"),
-        headings=("project", "period", "load_zone", 
-                  "IncrementalPowerCapacityMW", "IncrementalEnergyCapacityMWh",
-                  "OnlinePowerCapacityMW", "OnlineEnergyCapacityMWh" ),
-        values=lambda m, (g, bld_yr): (
+        headings=("project", "build_year", "load_zone",
+                  "IncrementalPowerCapacityMW", "IncrementalEnergyCapacityMWh"),
+        values=lambda m, g, bld_yr: (
             g, bld_yr, m.gen_load_zone[g],
             m.BuildGen[g, bld_yr], m.BuildStorageEnergy[g, bld_yr],
-            m.GenCapacity[g, bld_yr], m.StorageEnergyCapacity[g, bld_yr]
             ))
+    reporting.write_table(
+        instance, instance.STORAGE_GEN_PERIODS,
+        output_file=os.path.join(outdir, "storage_capacity.csv"),
+        headings=("generation_project", "period", "load_zone",
+                  "OnlinePowerCapacityMW", "OnlineEnergyCapacityMWh"),
+        values=lambda m, g, p: (
+            g, p, m.gen_load_zone[g],
+            m.GenCapacity[g, p], m.StorageEnergyCapacity[g, p])
+    )
     reporting.write_table(
         instance, instance.STORAGE_GEN_TPS,
         output_file=os.path.join(outdir, "storage_dispatch.txt"),
-        headings=("project", "timepoint", "load_zone", 
+        headings=("project", "timepoint", "load_zone",
                   "ChargeMW", "DischargeMW", "StateOfCharge"),
         values=lambda m, (g, t): (
             g, m.tp_timestamp[t], m.gen_load_zone[g],
