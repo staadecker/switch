@@ -173,10 +173,15 @@ def main(args=None, return_model=False, return_instance=False):
 
 
 def reload_prior_solution_from_pickle(instance, outdir):
+    if instance.options.verbose:
+        reload_prior_from_pickle_start_time = time.time()
+        print "Loading prior solution from pickle file..."
     with open(os.path.join(outdir, 'results.pickle'), 'rb') as fh:
          results = pickle.load(fh)
     instance.solutions.load_from(results)
-    return instance 
+    if instance.options.verbose:
+        print "Done loading from pickle file in {:.2f} s.".format(time.time() - reload_prior_from_pickle_start_time)
+    return instance
 
 
 patched_pyomo = False

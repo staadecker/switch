@@ -26,6 +26,7 @@ def main():
         del sys.argv[1]
         if cmd == "--version":
             print "Switch model version " + switch_model.__version__
+            print "Running on Python " + sys.version
             return 0
         if cmd == "solve":
             from .solve import main

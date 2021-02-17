@@ -58,9 +58,10 @@ setup(
         'planning', 'optimization'
     ],
     install_requires=[
-        'Pyomo>=4.4.1', # We need a version that works with glpk 4.60+
+        'Pyomo==5.1.1', # We need a version that works with glpk 4.60+
         'testfixtures', # used for standard tests
         'pandas',       # used for input upgrades and testing that functionality
+        'PyUtilib==5.4.1'
     ],
     extras_require={
         # packages used for advanced demand response, progressive hedging
